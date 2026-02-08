@@ -1,111 +1,101 @@
-# RabbitMQ Simple Demo (.NET)
+# RabbitMQ Demo (.NET 10)
 
-A simple demonstration of RabbitMQ message queue system using .NET/C# with a producer and consumer.
+A simple RabbitMQ demo using .NET 10. One console app can run as a **producer** (sends messages) or **consumer** (receives messages) via command-line arguments.
 
 ## Prerequisites
 
-- .NET 6.0 SDK or later
-- Docker (for running RabbitMQ)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- RabbitMQ server (e.g. via Docker)
 
-## Setup
-
-### 1. Start RabbitMQ Server
-
-Using Docker Compose (recommended):
-```bash
-docker-compose up -d
-```
-
-Or using Docker directly:
-```bash
-docker run -d --name rabbitmq \
-  -p 5672:5672 \
-  -p 15672:15672 \
-  rabbitmq:3-management
-```
-
-This starts RabbitMQ with:
-- Port 5672: AMQP protocol
-- Port 15672: Management UI (accessible at http://localhost:15672, credentials: guest/guest)
-
-### 2. Restore NuGet Packages
-
-```bash
-dotnet restore
-```
-
-## Running the Demo
-
-### Option 1: Simple Message Queue
-
-1. Start the consumer (in one terminal):
-```bash
-cd Consumer
-dotnet run
-```
-
-2. Send messages with the producer (in another terminal):
-```bash
-cd Producer
-dotnet run
-```
-
-### Option 2: Work Queue with Multiple Workers
-
-1. Start multiple consumers in separate terminals:
-```bash
-# Terminal 1
-cd Consumer
-dotnet run
-
-# Terminal 2
-cd Consumer
-dotnet run
-```
-
-2. Send multiple messages:
-```bash
-cd Producer
-dotnet run
-```
-
-## Project Structure
+## Project structure
 
 ```
-RabbitMQDemo/
-├── Producer/          # Message producer console app
-├── Consumer/          # Message consumer console app
-├── Shared/            # Shared models and utilities
-├── docker-compose.yml # RabbitMQ setup
+RabbitMQ-demo/
+├── Program.cs         # Entry point; producer and consumer logic
+├── MessageModel.cs    # Shared message model (Id, Text, Timestamp)
+├── rabbitmq-demo.csproj
+├── .vscode/           # Launch and task config for VS Code / Cursor
 └── README.md
 ```
 
-## What's Happening?
+## Setup
 
-- **Producer**: Sends messages to the `hello_queue`
-- **Consumer**: Receives and processes messages from the queue
-- **RabbitMQ**: Acts as the message broker, storing and routing messages
+### 1. Start RabbitMQ
 
-## Architecture
+With Docker:
 
-```
-Producer → RabbitMQ Queue → Consumer(s)
+```bash
+docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:management
 ```
 
-Messages are distributed among multiple consumers in a round-robin fashion.
+- **5672** – AMQP
+- **15672** – Management UI: http://localhost:15672 (login: `guest` / `guest`)
 
-## Features Demonstrated
+### 2. Restore and build
 
-- Message publishing and consuming
-- JSON serialization
-- Manual message acknowledgment
-- Durable queues (messages persist)
-- Quality of Service (QoS) settings
-- Multiple consumers with fair dispatch
+```bash
+dotnet restore
+dotnet build
+```
+
+## Running the demo
+
+### Show usage (help)
+
+```bash
+dotnet run
+# or
+dotnet run help
+```
+
+### Run the consumer (then keep it running)
+
+In one terminal:
+
+```bash
+dotnet run consumer
+```
+
+Leave this running. Stop with **Ctrl+C** when done (stop it before running `dotnet run` again in the same solution, or the build may fail because the exe is locked).
+
+### Run the producer (send messages)
+
+In another terminal:
+
+```bash
+dotnet run producer
+```
+
+Aliases: `dotnet run send` (producer), `dotnet run receive` (consumer).
+
+## Configuration
+
+Connection settings are in `Program.cs` at the top:
+
+- **HostName**: `localhost`
+- **Port**: `5672`
+- **UserName** / **Password**: `guest` / `guest`
+- **Queue**: `demo-queue`
+
+Change these if your RabbitMQ runs elsewhere or uses different credentials.
+
+## What it demonstrates
+
+- **Producer**: Connects, declares `demo-queue`, publishes three JSON messages (`MessageModel`), then exits.
+- **Consumer**: Connects, declares the same queue, consumes messages and prints them to the console until you press Ctrl+C.
+- **MessageModel**: Simple type with `Id`, `Text`, and `Timestamp` (JSON serialized).
+
+## Tech stack
+
+- .NET 10
+- [RabbitMQ.Client](https://www.nuget.org/packages/RabbitMQ.Client) 7.2.0
+- Async API: `CreateConnectionAsync`, `CreateChannelAsync`, `AsyncEventingBasicConsumer`, `BasicConsumeAsync`
 
 ## Cleanup
 
-Stop and remove RabbitMQ container:
+Stop and remove the RabbitMQ container:
+
 ```bash
-docker-compose down
+docker stop rabbitmq
+docker rm rabbitmq
 ```
